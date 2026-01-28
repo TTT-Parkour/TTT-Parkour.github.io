@@ -150,6 +150,7 @@
     .mesh-viewer-subtitle {
       color: rgba(0, 0, 0, 0.6);
       margin-bottom: 2rem;
+      font-size: 1.1rem;
     }
 
     /* Dark section styles for Abstract and BibTeX */
@@ -167,6 +168,7 @@
     .dark-section p,
     .dark-section .has-text-justified {
       color: rgba(255, 255, 255, 0.9) !important;
+      font-size: 1.1rem;
     }
 
     .dark-section pre {
@@ -467,19 +469,19 @@
         </button>
 
         <select id="mesh-selector" class="mesh-selector">
-          <option value="boxes_postprocess.ply">Boxes Terrain</option>
-          <option value="mix1_postprocess.ply">Mixed Terrain 1</option>
-          <option value="mix2_postprocess.ply">Mixed Terrain 2</option>
-          <option value="narrow_postprocess.ply">Narrow Bridge Terrain 1</option>
-          <option value="narrow2_postprocess.ply">Narrow Bridge Terrain 2</option>
-          <option value="narrow3_postprocess.ply">Narrow Bridge Terrain 3</option>
-          <option value="stake1_postprocess.ply">Stake Terrain 1</option>
-          <option value="stake2_postprocess.ply">Stake Terrain 2</option>
-          <option value="stake3_postprocess.ply">Stake Terrain 3</option>
-          <option value="tank_postprocess.ply">Wedge Terrain</option>
-          <option value="tank_circle_4_postprocess.ply">Boston Terrain</option>
-          <option value="trapezoid1_postprocess.ply">Trapezoid Terrain 1</option>
-          <option value="trapezoid2_postprocess.ply">Trapezoid Terrain 2</option>
+          <option value="boxes_postprocess.ply">Boxes</option>
+          <option value="mix1_postprocess.ply">Mix 1</option>
+          <option value="mix2_postprocess.ply">Mix 2</option>
+          <option value="narrow_postprocess.ply">Narrow Bridge 1</option>
+          <option value="narrow2_postprocess.ply">Narrow Bridge 2</option>
+          <option value="narrow3_postprocess.ply">Narrow Bridge 3</option>
+          <option value="stake1_postprocess.ply">Stake 1</option>
+          <option value="stake2_postprocess.ply">Stake 2</option>
+          <option value="stake3_postprocess.ply">Stake 3</option>
+          <option value="tank_postprocess.ply">Wedge</option>
+          <option value="tank_circle_4_postprocess.ply">Boston</option>
+          <option value="trapezoid1_postprocess.ply">Trapezoid 1</option>
+          <option value="trapezoid2_postprocess.ply">Trapezoid 2</option>
         </select>
 
         <button id="next-mesh" class="mesh-nav-btn" title="Next mesh">
@@ -501,19 +503,19 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Mesh files list with display names
 const meshData = [
-  { file: 'boxes_postprocess.ply', name: 'Boxes Terrain' },
-  { file: 'mix1_postprocess.ply', name: 'Mixed Terrain 1' },
-  { file: 'mix2_postprocess.ply', name: 'Mixed Terrain 2' },
-  { file: 'narrow_postprocess.ply', name: 'Narrow Bridge Terrain 1' },
-  { file: 'narrow2_postprocess.ply', name: 'Narrow Bridge Terrain 2' },
-  { file: 'narrow3_postprocess.ply', name: 'Narrow Bridge Terrain 3' },
-  { file: 'stake1_postprocess.ply', name: 'Stake Terrain 1' },
-  { file: 'stake2_postprocess.ply', name: 'Stake Terrain 2' },
-  { file: 'stake3_postprocess.ply', name: 'Stake Terrain 3' },
-  { file: 'tank_postprocess.ply', name: 'Wedge Terrain' },
-  { file: 'tank_circle_4_postprocess.ply', name: 'Boston Terrain' },
-  { file: 'trapezoid1_postprocess.ply', name: 'Trapezoid Terrain 1' },
-  { file: 'trapezoid2_postprocess.ply', name: 'Trapezoid Terrain 2' }
+  { file: 'boxes_postprocess.ply', name: 'Boxes' },
+  { file: 'mix1_postprocess.ply', name: 'Mix 1' },
+  { file: 'mix2_postprocess.ply', name: 'Mix 2' },
+  { file: 'narrow_postprocess.ply', name: 'Narrow Bridge 1' },
+  { file: 'narrow2_postprocess.ply', name: 'Narrow Bridge 2' },
+  { file: 'narrow3_postprocess.ply', name: 'Narrow Bridge 3' },
+  { file: 'stake1_postprocess.ply', name: 'Stake 1' },
+  { file: 'stake2_postprocess.ply', name: 'Stake 2' },
+  { file: 'stake3_postprocess.ply', name: 'Stake 3' },
+  { file: 'tank_postprocess.ply', name: 'Wedge' },
+  { file: 'tank_circle_4_postprocess.ply', name: 'Boston' },
+  { file: 'trapezoid1_postprocess.ply', name: 'Trapezoid 1' },
+  { file: 'trapezoid2_postprocess.ply', name: 'Trapezoid 2' }
 ];
 
 const meshBasePath = './resources/scanned_mesh/';
@@ -570,9 +572,9 @@ function initScene() {
   directionalLight3.position.set(0, -5, 5);
   scene.add(directionalLight3);
 
-  // Grid helper
-  const gridHelper = new THREE.GridHelper(10, 20, 0x444444, 0x222222);
-  scene.add(gridHelper);
+  // Grid helper (disabled)
+  // const gridHelper = new THREE.GridHelper(10, 20, 0x444444, 0x222222);
+  // scene.add(gridHelper);
 
   // Handle window resize
   window.addEventListener('resize', onWindowResize);
@@ -652,10 +654,14 @@ function loadMesh(index) {
 
       currentMesh = new THREE.Mesh(geometry, material);
       currentMesh.scale.set(scale, scale, scale);
+      // Rotate mesh so that Z-axis points up (terrain surface faces upward)
+      currentMesh.rotation.x = -Math.PI / 2;
+      // Adjust mesh position: x negative to move left, z positive to move up
+      currentMesh.position.set(0, 0, 0);
       scene.add(currentMesh);
 
-      // Reset camera position
-      camera.position.set(3, 3, 3);
+      // Reset camera position - from front-top for centered view
+      camera.position.set(0, 2.5, 3);
       controls.target.set(0, 0, 0);
       controls.update();
 
@@ -686,22 +692,29 @@ function updateUI() {
   selector.value = meshInfo.file;
   counterEl.textContent = (currentMeshIndex + 1) + ' / ' + meshData.length;
 
-  prevBtn.disabled = currentMeshIndex === 0;
-  nextBtn.disabled = currentMeshIndex === meshData.length - 1;
+  // Enable buttons for circular navigation
+  prevBtn.disabled = false;
+  nextBtn.disabled = false;
 }
 
 function prevMesh() {
+  // Circular navigation: go to last mesh if at first
   if (currentMeshIndex > 0) {
     currentMeshIndex--;
-    loadMesh(currentMeshIndex);
+  } else {
+    currentMeshIndex = meshData.length - 1;
   }
+  loadMesh(currentMeshIndex);
 }
 
 function nextMesh() {
+  // Circular navigation: go to first mesh if at last
   if (currentMeshIndex < meshData.length - 1) {
     currentMeshIndex++;
-    loadMesh(currentMeshIndex);
+  } else {
+    currentMeshIndex = 0;
   }
+  loadMesh(currentMeshIndex);
 }
 
 function selectMesh(filename) {
