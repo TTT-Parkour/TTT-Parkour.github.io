@@ -26,6 +26,159 @@
   <link rel="icon" href="./resources/icon.png">
 
   <script src="https://www.youtube.com/iframe_api"></script>
+
+  <!-- Three.js for 3D mesh viewer -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    /* 3D Mesh Viewer Styles */
+    .mesh-viewer-section {
+      background: #f5f5f5;
+      padding: 3rem 1.5rem;
+    }
+
+    .mesh-viewer-container {
+      position: relative;
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    #mesh-canvas-container {
+      width: 100%;
+      height: 500px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+      background: #ffffff;
+      position: relative;
+    }
+
+    #mesh-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .mesh-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .mesh-nav-btn {
+      background: rgba(0, 0, 0, 0.05);
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      color: #333;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .mesh-nav-btn:hover {
+      background: rgba(0, 0, 0, 0.1);
+      border-color: rgba(0, 0, 0, 0.4);
+      transform: scale(1.1);
+    }
+
+    .mesh-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .mesh-selector {
+      background: white;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      color: #333;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      min-width: 200px;
+    }
+
+    .mesh-selector option {
+      background: white;
+      color: #333;
+    }
+
+    .mesh-info {
+      text-align: center;
+      color: rgba(0, 0, 0, 0.6);
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .mesh-loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #333;
+      font-size: 1.2rem;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 1rem 2rem;
+      border-radius: 8px;
+    }
+
+    .mesh-loading.hidden {
+      display: none;
+    }
+
+    .mesh-viewer-title {
+      color: #333 !important;
+    }
+
+    .mesh-viewer-subtitle {
+      color: rgba(0, 0, 0, 0.6);
+      margin-bottom: 2rem;
+    }
+
+    /* Dark section styles for Abstract and BibTeX */
+    .dark-section {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+
+    .dark-section .title,
+    .dark-section .titile,
+    .dark-section h2 {
+      color: white !important;
+    }
+
+    .dark-section .content,
+    .dark-section p,
+    .dark-section .has-text-justified {
+      color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    .dark-section pre {
+      background: rgba(0, 0, 0, 0.3);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .dark-section code {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.9);
+    }
+  </style>
 </head>
 
 
@@ -294,7 +447,295 @@
   }
 </script>
 
-<section class="section">
+<!-- 3D Mesh Viewer Section -->
+<section class="mesh-viewer-section">
+  <div class="container">
+    <h2 class="title is-2 has-text-centered mesh-viewer-title">Scanned Terrain Meshes</h2>
+    <p class="has-text-centered mesh-viewer-subtitle">
+      Interactive 3D visualization of reconstructed terrain meshes. Drag to rotate, scroll to zoom.
+    </p>
+
+    <div class="mesh-viewer-container">
+      <div id="mesh-canvas-container">
+        <div id="mesh-loading" class="mesh-loading">Loading mesh...</div>
+        <canvas id="mesh-canvas"></canvas>
+      </div>
+
+      <div class="mesh-controls">
+        <button id="prev-mesh" class="mesh-nav-btn" title="Previous mesh">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <select id="mesh-selector" class="mesh-selector">
+          <option value="boxes_postprocess.ply">Boxes Terrain</option>
+          <option value="mix1_postprocess.ply">Mixed Terrain 1</option>
+          <option value="mix2_postprocess.ply">Mixed Terrain 2</option>
+          <option value="narrow_postprocess.ply">Narrow Bridge Terrain 1</option>
+          <option value="narrow2_postprocess.ply">Narrow Bridge Terrain 2</option>
+          <option value="narrow3_postprocess.ply">Narrow Bridge Terrain 3</option>
+          <option value="stake1_postprocess.ply">Stake Terrain 1</option>
+          <option value="stake2_postprocess.ply">Stake Terrain 2</option>
+          <option value="stake3_postprocess.ply">Stake Terrain 3</option>
+          <option value="tank_postprocess.ply">Wedge Terrain</option>
+          <option value="tank_circle_4_postprocess.ply">Boston Terrain</option>
+          <option value="trapezoid1_postprocess.ply">Trapezoid Terrain 1</option>
+          <option value="trapezoid2_postprocess.ply">Trapezoid Terrain 2</option>
+        </select>
+
+        <button id="next-mesh" class="mesh-nav-btn" title="Next mesh">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <div class="mesh-info">
+        <span id="mesh-counter">1 / 13</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script type="module">
+import * as THREE from 'three';
+import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Mesh files list with display names
+const meshData = [
+  { file: 'boxes_postprocess.ply', name: 'Boxes Terrain' },
+  { file: 'mix1_postprocess.ply', name: 'Mixed Terrain 1' },
+  { file: 'mix2_postprocess.ply', name: 'Mixed Terrain 2' },
+  { file: 'narrow_postprocess.ply', name: 'Narrow Bridge Terrain 1' },
+  { file: 'narrow2_postprocess.ply', name: 'Narrow Bridge Terrain 2' },
+  { file: 'narrow3_postprocess.ply', name: 'Narrow Bridge Terrain 3' },
+  { file: 'stake1_postprocess.ply', name: 'Stake Terrain 1' },
+  { file: 'stake2_postprocess.ply', name: 'Stake Terrain 2' },
+  { file: 'stake3_postprocess.ply', name: 'Stake Terrain 3' },
+  { file: 'tank_postprocess.ply', name: 'Wedge Terrain' },
+  { file: 'tank_circle_4_postprocess.ply', name: 'Boston Terrain' },
+  { file: 'trapezoid1_postprocess.ply', name: 'Trapezoid Terrain 1' },
+  { file: 'trapezoid2_postprocess.ply', name: 'Trapezoid Terrain 2' }
+];
+
+const meshBasePath = './resources/scanned_mesh/';
+let currentMeshIndex = 0;
+let scene, camera, renderer, controls, currentMesh;
+
+// Initialize Three.js scene
+function initScene() {
+  const container = document.getElementById('mesh-canvas-container');
+  const canvas = document.getElementById('mesh-canvas');
+
+  // Scene setup
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xffffff);
+
+  // Camera setup
+  camera = new THREE.PerspectiveCamera(
+    50,
+    container.clientWidth / container.clientHeight,
+    0.1,
+    1000
+  );
+  camera.position.set(3, 3, 3);
+
+  // Renderer setup
+  renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    antialias: true
+  });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // OrbitControls
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.screenSpacePanning = false;
+  controls.minDistance = 1;
+  controls.maxDistance = 20;
+
+  // Lighting - brighter for better visibility
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+  scene.add(ambientLight);
+
+  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+  directionalLight1.position.set(5, 10, 7);
+  scene.add(directionalLight1);
+
+  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight2.position.set(-5, 5, -5);
+  scene.add(directionalLight2);
+
+  const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.6);
+  directionalLight3.position.set(0, -5, 5);
+  scene.add(directionalLight3);
+
+  // Grid helper
+  const gridHelper = new THREE.GridHelper(10, 20, 0x444444, 0x222222);
+  scene.add(gridHelper);
+
+  // Handle window resize
+  window.addEventListener('resize', onWindowResize);
+
+  // Start animation loop
+  animate();
+
+  // Load initial mesh
+  loadMesh(currentMeshIndex);
+}
+
+function onWindowResize() {
+  const container = document.getElementById('mesh-canvas-container');
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+function loadMesh(index) {
+  const loadingEl = document.getElementById('mesh-loading');
+  loadingEl.classList.remove('hidden');
+  loadingEl.textContent = 'Loading mesh...';
+
+  // Remove existing mesh
+  if (currentMesh) {
+    scene.remove(currentMesh);
+    if (currentMesh.geometry) currentMesh.geometry.dispose();
+    if (currentMesh.material) currentMesh.material.dispose();
+  }
+
+  const loader = new PLYLoader();
+  const meshInfo = meshData[index];
+
+  loader.load(
+    meshBasePath + meshInfo.file,
+    function(geometry) {
+      geometry.computeVertexNormals();
+
+      // Center the geometry
+      geometry.computeBoundingBox();
+      const center = new THREE.Vector3();
+      geometry.boundingBox.getCenter(center);
+      geometry.translate(-center.x, -center.y, -center.z);
+
+      // Calculate scale to fit in view
+      const size = new THREE.Vector3();
+      geometry.boundingBox.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 3 / maxDim;
+
+      // Create material - use vertex colors if available
+      // Set side to DoubleSide so mesh is visible from all angles
+      let material;
+      if (geometry.attributes.color) {
+        material = new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          roughness: 0.5,
+          metalness: 0.05,
+          side: THREE.DoubleSide,
+          emissive: 0x000000,
+          emissiveIntensity: 0
+        });
+      } else {
+        material = new THREE.MeshStandardMaterial({
+          color: 0xaaaaaa,  // Light gray fallback
+          roughness: 0.5,
+          metalness: 0.05,
+          side: THREE.DoubleSide
+        });
+      }
+
+      currentMesh = new THREE.Mesh(geometry, material);
+      currentMesh.scale.set(scale, scale, scale);
+      scene.add(currentMesh);
+
+      // Reset camera position
+      camera.position.set(3, 3, 3);
+      controls.target.set(0, 0, 0);
+      controls.update();
+
+      loadingEl.classList.add('hidden');
+      updateUI();
+    },
+    function(xhr) {
+      // Progress callback
+      if (xhr.lengthComputable) {
+        const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+        loadingEl.textContent = 'Loading... ' + percent + '%';
+      }
+    },
+    function(error) {
+      console.error('Error loading PLY:', error);
+      loadingEl.textContent = 'Error loading mesh';
+    }
+  );
+}
+
+function updateUI() {
+  const selector = document.getElementById('mesh-selector');
+  const counterEl = document.getElementById('mesh-counter');
+  const prevBtn = document.getElementById('prev-mesh');
+  const nextBtn = document.getElementById('next-mesh');
+
+  const meshInfo = meshData[currentMeshIndex];
+  selector.value = meshInfo.file;
+  counterEl.textContent = (currentMeshIndex + 1) + ' / ' + meshData.length;
+
+  prevBtn.disabled = currentMeshIndex === 0;
+  nextBtn.disabled = currentMeshIndex === meshData.length - 1;
+}
+
+function prevMesh() {
+  if (currentMeshIndex > 0) {
+    currentMeshIndex--;
+    loadMesh(currentMeshIndex);
+  }
+}
+
+function nextMesh() {
+  if (currentMeshIndex < meshData.length - 1) {
+    currentMeshIndex++;
+    loadMesh(currentMeshIndex);
+  }
+}
+
+function selectMesh(filename) {
+  const index = meshData.findIndex(m => m.file === filename);
+  if (index !== -1) {
+    currentMeshIndex = index;
+    loadMesh(currentMeshIndex);
+  }
+}
+
+// Initialize scene
+initScene();
+
+// Event listeners
+document.getElementById('prev-mesh').addEventListener('click', prevMesh);
+document.getElementById('next-mesh').addEventListener('click', nextMesh);
+document.getElementById('mesh-selector').addEventListener('change', function(e) {
+  selectMesh(e.target.value);
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', function(e) {
+  // Only respond to arrow keys when not focused on inputs
+  if (document.activeElement.tagName === 'SELECT') return;
+
+  if (e.key === 'ArrowLeft') {
+    prevMesh();
+  } else if (e.key === 'ArrowRight') {
+    nextMesh();
+  }
+});
+</script>
+
+<section class="section dark-section">
   <div class="container">
     <!-- Abstract. -->
     <div class="columns is-centered has-text-centered">
@@ -302,7 +743,7 @@
         <h2 class="title is-2">Abstract</h2>
         <div class="content has-text-justified">
           <p>
-            Achieving highly dynamic humanoid parkour on unseen, complex terrains remains a challenge in robotics. Although general policies demonstrate capabilities across broad terrain distributions, they often struggle with arbitrary and highly challenging environments. To overcome this limitation, we propose a framework that leverages rapid test-time training (TTT) on novel terrains, significantly enhancing the robot's capability to traverse extremely difficult geometries. We adopt a two-stage end-to-end learning paradigm: a policy is first pre-trained on diverse procedurally generated terrains, followed by rapid fine-tuning on high-fidelity meshes reconstructed from real-world captures. Specifically, we develop an efficient geometry reconstruction pipeline using a feed-forward model based on RGB-D inputs, ensuring both speed and quality during test-time training. We demonstrate that \textit{TTT-Parkour} empowers humanoid robots to master complex obstacles, including wedges, stakes, boxes, trapezoids, and narrow beams. The whole pipeline of capturing, reconstructing and training requires less than 10 minutes on most tested terrains. Extensive experiments show that the policy after test-time training exhibits robust zero-shot sim-to-real transfer.
+            Achieving highly dynamic humanoid parkour on unseen, complex terrains remains a challenge in robotics. Although general policies demonstrate capabilities across broad terrain distributions, they often struggle with arbitrary and highly challenging environments. To overcome this limitation, we propose a framework that leverages rapid test-time training (TTT) on novel terrains, significantly enhancing the robot's capability to traverse extremely difficult geometries. We adopt a two-stage end-to-end learning paradigm: a policy is first pre-trained on diverse procedurally generated terrains, followed by rapid fine-tuning on high-fidelity meshes reconstructed from real-world captures. Specifically, we develop an efficient geometry reconstruction pipeline using a feed-forward model based on RGB-D inputs, ensuring both speed and quality during test-time training. We demonstrate that TTT-Parkour empowers humanoid robots to master complex obstacles, including wedges, stakes, boxes, trapezoids, and narrow beams. The whole pipeline of capturing, reconstructing and training requires less than 10 minutes on most tested terrains. Extensive experiments show that the policy after test-time training exhibits robust zero-shot sim-to-real transfer.
           </p>
         </div>
       </div>
@@ -310,11 +751,11 @@
   </div>
 </section>
 
-<section class="section" id="BibTeX">
+<section class="section dark-section" id="BibTeX">
   <div class="container content">
     <h2 class="titile">BibTeX</h2>
     <pre><code>@article{,
-  title={TTT-Parkour: Rapid Test-Time Training for<br>Perceptive Robot Parkour},
+  title={TTT-Parkour: Rapid Test-Time Training for Perceptive Robot Parkour},
   author={Zhu, Shaoting and Ye, Baijun and Chen, Jiakang and Wang, Jiaxuan and Zhuang, Ziwen and Mou, Linzhan and Huang, Runhan and Zhao, Hang},
   journal={},
   year={2026}
@@ -322,10 +763,10 @@
   </div>
 </section>
 
-<footer class="footer">
+<footer class="footer dark-section">
   <div class="container">
     <div class="content has-text-centered">
-      <p>Page template borrowed from <a href="https://nerfies.github.io/"><span class="dnerf">Nerfies</span></a> and <a href="https://humanoid4parkour.github.io/"><span class="dnerf">Humanoid Parkour Learning</span></a>.</p>
+      <p style="color: rgba(255,255,255,0.7);">Page template borrowed from <a href="https://nerfies.github.io/" style="color: rgba(255,255,255,0.9);"><span class="dnerf">Nerfies</span></a> and <a href="https://humanoid4parkour.github.io/" style="color: rgba(255,255,255,0.9);"><span class="dnerf">Humanoid Parkour Learning</span></a>.</p>
     </div>
   </div>
 </footer>
