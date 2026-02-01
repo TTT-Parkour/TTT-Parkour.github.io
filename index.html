@@ -552,6 +552,7 @@ function initScene() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
+  controls.zoomSpeed = 0.5;
   controls.screenSpacePanning = false;
   controls.minDistance = 1;
   controls.maxDistance = 20;
@@ -746,6 +747,250 @@ document.addEventListener('keydown', function(e) {
     nextMesh();
   }
 });
+</script>
+
+<style>
+  #recon-mesh-canvas-container {
+    width: 100%;
+    height: 500px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    background: #ffffff;
+    position: relative;
+  }
+  #recon-mesh-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+</style>
+
+<section class="mesh-viewer-section" style="border-top: 1px solid #e0e0e0; background-color: #a5c4c3">
+  <div class="container">
+    <h2 class="title is-2 has-text-centered mesh-viewer-title">Our Reconstructed Terrain Meshes</h2>
+    <p class="has-text-centered mesh-viewer-subtitle">
+      Visualization of meshes reconstructed by our method. Drag to rotate, scroll to zoom.
+    </p>
+
+    <div class="mesh-viewer-container">
+      <div id="recon-mesh-canvas-container">
+        <div id="recon-mesh-loading" class="mesh-loading">Loading mesh...</div>
+        <canvas id="recon-mesh-canvas"></canvas>
+      </div>
+
+      <div class="mesh-controls">
+        <button id="recon-prev-btn" class="mesh-nav-btn" title="Previous mesh">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <select id="recon-mesh-selector" class="mesh-selector">
+          <option value="boxes.ply">Boxes</option>
+          <option value="mix1.ply">Mix 1</option>
+          <option value="mix2_final.ply">Mix 2</option>
+          <option value="narrow.ply">Narrow Bridge 1</option>
+          <option value="narrow2.ply">Narrow Bridge 2</option>
+          <option value="narrow3.ply">Narrow Bridge 3</option>
+          <option value="stake1.ply">Stake 1</option>
+          <option value="stake2.ply">Stake 2</option>
+          <option value="stake3.ply">Stake 3</option>
+          <option value="tank.ply">Wedge</option>
+          <option value="t_boston.ply">Boston</option>
+          <option value="trapezoid1.ply">Trapezoid 1</option>
+          <option value="trapezoid2.ply">Trapezoid 2</option>
+        </select>
+
+        <button id="recon-next-btn" class="mesh-nav-btn" title="Next mesh">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <div class="mesh-info">
+        <span id="recon-mesh-counter">1 / 13</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script type="module">
+import * as THREE from 'three';
+import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const recon_meshData = [
+  { file: 'boxes.ply', name: 'Boxes' },
+  { file: 'mix1.ply', name: 'Mix 1' },
+  { file: 'mix2_final.ply', name: 'Mix 2' },
+  { file: 'narrow.ply', name: 'Narrow Bridge 1' },
+  { file: 'narrow2.ply', name: 'Narrow Bridge 2' },
+  { file: 'narrow3.ply', name: 'Narrow Bridge 3' },
+  { file: 'stake1.ply', name: 'Stake 1' },
+  { file: 'stake2.ply', name: 'Stake 2' },
+  { file: 'stake3.ply', name: 'Stake 3' },
+  { file: 'tank.ply', name: 'Wedge' },
+  { file: 't_boston.ply', name: 'Boston' },
+  { file: 'trapezoid1.ply', name: 'Trapezoid 1' },
+  { file: 'trapezoid2.ply', name: 'Trapezoid 2' }
+];
+
+const recon_basePath = './resources/reconstructed_mesh/';
+
+let recon_Index = 0;
+let recon_Scene, recon_Camera, recon_Renderer, recon_Controls, recon_CurrentMesh;
+
+function initReconSystem() {
+  const container = document.getElementById('recon-mesh-canvas-container');
+  const canvas = document.getElementById('recon-mesh-canvas');
+
+  if (!container || !canvas) {
+    console.warn("Reconstructed Mesh container not found, skipping init.");
+    return;
+  }
+
+  recon_Scene = new THREE.Scene();
+  recon_Scene.background = new THREE.Color(0xffffff);
+
+  recon_Camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+  recon_Camera.position.set(3, 3, 3);
+
+  recon_Renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  recon_Renderer.setSize(container.clientWidth, container.clientHeight);
+  recon_Renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  recon_Controls = new OrbitControls(recon_Camera, recon_Renderer.domElement);
+  recon_Controls.enableDamping = true;
+  recon_Controls.dampingFactor = 0.05;
+  recon_Controls.zoomSpeed = 0.5;
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+  recon_Scene.add(ambientLight);
+  
+  const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+  dirLight1.position.set(5, 10, 7);
+  recon_Scene.add(dirLight1);
+
+  const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight2.position.set(-5, 5, -5);
+  recon_Scene.add(dirLight2);
+
+  window.addEventListener('resize', onReconResize);
+
+  animateRecon();
+
+  loadReconMesh(recon_Index);
+}
+
+function onReconResize() {
+  const container = document.getElementById('recon-mesh-canvas-container');
+  if (container && recon_Camera && recon_Renderer) {
+    recon_Camera.aspect = container.clientWidth / container.clientHeight;
+    recon_Camera.updateProjectionMatrix();
+    recon_Renderer.setSize(container.clientWidth, container.clientHeight);
+  }
+}
+
+function animateRecon() {
+  requestAnimationFrame(animateRecon);
+  if (recon_Controls) recon_Controls.update();
+  if (recon_Renderer && recon_Scene && recon_Camera) {
+    recon_Renderer.render(recon_Scene, recon_Camera);
+  }
+}
+
+function loadReconMesh(index) {
+  const loadingEl = document.getElementById('recon-mesh-loading');
+  if (loadingEl) {
+    loadingEl.classList.remove('hidden');
+    loadingEl.textContent = 'Loading mesh...';
+  }
+
+  if (recon_CurrentMesh) {
+    recon_Scene.remove(recon_CurrentMesh);
+    if (recon_CurrentMesh.geometry) recon_CurrentMesh.geometry.dispose();
+    if (recon_CurrentMesh.material) recon_CurrentMesh.material.dispose();
+  }
+
+  const loader = new PLYLoader();
+  const meshInfo = recon_meshData[index];
+  const fullPath = recon_basePath + meshInfo.file;
+
+  loader.load(
+    fullPath,
+    function(geometry) {
+      geometry.computeVertexNormals();
+      geometry.computeBoundingBox();
+      const center = new THREE.Vector3();
+      geometry.boundingBox.getCenter(center);
+      geometry.translate(-center.x, -center.y, -center.z);
+
+      const size = new THREE.Vector3();
+      geometry.boundingBox.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 3 / maxDim;
+
+      let material;
+      if (geometry.attributes.color) {
+        material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide });
+      } else {
+        material = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide });
+      }
+
+      recon_CurrentMesh = new THREE.Mesh(geometry, material);
+      recon_CurrentMesh.scale.set(scale, scale, scale);
+      recon_CurrentMesh.rotation.x = -Math.PI / 2;
+      recon_Scene.add(recon_CurrentMesh);
+
+      recon_Camera.position.set(0, 2.5, 3);
+      recon_Controls.target.set(0, 0, 0);
+      recon_Controls.update();
+
+      if (loadingEl) loadingEl.classList.add('hidden');
+      updateReconUI();
+    },
+    undefined,
+    function(error) {
+      console.error('Recon Mesh Load Error:', error);
+      if (loadingEl) loadingEl.textContent = 'Error loading mesh';
+    }
+  );
+}
+
+function updateReconUI() {
+  const selector = document.getElementById('recon-mesh-selector');
+  const counter = document.getElementById('recon-mesh-counter');
+  if (selector) selector.value = recon_meshData[recon_Index].file;
+  if (counter) counter.textContent = (recon_Index + 1) + ' / ' + recon_meshData.length;
+}
+
+initReconSystem();
+
+const btnPrev = document.getElementById('recon-prev-btn');
+const btnNext = document.getElementById('recon-next-btn');
+const selector = document.getElementById('recon-mesh-selector');
+
+if (btnPrev) {
+  btnPrev.addEventListener('click', () => {
+    recon_Index = (recon_Index > 0) ? recon_Index - 1 : recon_meshData.length - 1;
+    loadReconMesh(recon_Index);
+  });
+}
+
+if (btnNext) {
+  btnNext.addEventListener('click', () => {
+    recon_Index = (recon_Index < recon_meshData.length - 1) ? recon_Index + 1 : 0;
+    loadReconMesh(recon_Index);
+  });
+}
+
+if (selector) {
+  selector.addEventListener('change', (e) => {
+    const idx = recon_meshData.findIndex(m => m.file === e.target.value);
+    if (idx !== -1) {
+      recon_Index = idx;
+      loadReconMesh(recon_Index);
+    }
+  });
+}
 </script>
 
 <section class="section dark-section">
